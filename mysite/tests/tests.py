@@ -25,11 +25,7 @@ def generate_person(persons):
 	# структура {int citizen_id : list of relatives}
 
 	# counter родственных связей
-	relatives = {1:[]}
-	if persons > 2000:
-		value = int(2000/2)
-	else:
-		value = int(person/2)
+	value = int(persons/2)
 	# заполняем ассоциативный массив родственников
 	for i in range(2, int(persons)+1):
 		result = []
@@ -90,21 +86,14 @@ class Test:
 		
 	# route 1
 	def parse(self, arg):
-		# разделяем на запросы
-		to_i = int(arg/2000) + 1
-		arg = arg%2000
-
 		# таймер
 		start = time.time()
 		try:
 			# запросы
-			for i in range(to_i):
-				if i == to_i-1:
-					self.app.post("/imports", data=dumps({"citizens":self.mass["citizens"][2000*i:2000*i + arg]}), content_type='application/json')
-				else:
-					self.app.post("/imports", data={"citizens":self.mass["citizens"][2000*i:2000*(i+1)]}, content_type='application/json')
+			if i == to_i-1:
+				self.app.post("/imports", data=dumps({"citizens":self.mass["citizens"][arg]}), content_type='application/json')
 			# результат
-			print("  1. [+]", "{} sec".format(time.time()-start/to_i))
+			print("  1. [+]", "{} sec".format(time.time()-start))
 			print("  -------------- OK ---------------", "\n")
 
 			self.counter += 1
