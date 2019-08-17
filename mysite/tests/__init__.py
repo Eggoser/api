@@ -1,7 +1,5 @@
 import sys
-import logging
 from .tests import Test
-from .setting import log
 
 
 class MyTest:
@@ -16,6 +14,4 @@ class MyTest:
 			print("You must be Enter the number of people, \nexample: 'python manage.py runtest 10000'" + "\n"*enters)
 			print("--------- 0 tests is run ----------")
 			return 0
-		if peoples > 2000:
-			peoples = 2000
 		self.test.run_test(peoples=int(peoples))

@@ -4,24 +4,52 @@ from dateutil.relativedelta import relativedelta
 from json import loads
 
 # таблица для хранения 
+# exec("Person_{} = type('Mai'.title(), (Person, db.Model), { '__tablename__' : 'table_{}' }, {'town':db.Column(db.String(64))}, {'street':db.Column(db.String(64))}, {'building':db.Column(db.String(64))}, {'apartment':db.Column(db.Integer)}, {'birth_date' db.Column(db.DateTime)}, {'name':db.Column(db.Text)}, {'gender':db.Column(db.String(8))}, {'children':db.relationship('Relatives',secondary=association_table, backref=db.backref('persons', lazy=True))})".format(next_value, next_value))
+
+
+# возвращает предыдущий import_id
+def last_import_id():
+    import_ids = Person.query.filter(Person.import_id).all()
+    if import_ids:
+        return import_ids[-1].import_id + 1
+    else:
+        return 1
+
+def last_import_id_association():
+    import_ids = Person.query.filter(Person.import_id).all()
+    if import_ids:
+        return import_ids[-1].import_id
+    else:
+        return 1
+
 # информации о человеке
+association_table = db.Table("association",
+    db.Column("import_id", db.Integer, primary_key=True, default=last_import_id_association),
+    db.Column("persons_citizen_id", db.Integer, db.ForeignKey("persons.citizen_id"), primary_key=True), 
+    # db.Column("persons_import_id", db.Integer, db.ForeignKey("persons.import_id")), 
+    db.Column("relatives_citizen_id", db.Integer, db.ForeignKey("relatives.citizen_id"), primary_key=True),)
+    # db.Column("relatives_import_id", db.Integer, db.ForeignKey("relatives.import_id")))
+
+
 class Person(db.Model):
 
     # структура таблицы
     # была ранее использована для её создания
 
     __tablename__ = "persons"
-    id = db.Column(db.Integer, primary_key=True)
     import_id = db.Column(db.Integer)
     citizen_id = db.Column(db.Integer)
-    town = db.Column(db.String(64))
-    street = db.Column(db.String(80))
-    building = db.Column(db.String(80))
-    apartment = db.Column(db.Integer)
-    birth_date = db.Column(db.String(80))
-    name = db.Column(db.Text)
-    gender = db.Column(db.String(64))
-    relatives = db.Column(db.Text)
+    town = db.Column(db.String(64), nullable=False)
+    street = db.Column(db.String(80), nullable=False)
+    building = db.Column(db.String(64), nullable=False)
+    apartment = db.Column(db.Integer, nullable=False)
+    birth_date = db.Column(db.DateTime, nullable=False)
+    name = db.Column(db.Text, nullable=False)
+    gender = db.Column(db.String(8), nullable=False)
+    age = db.Column(db.Integer, nullable=False)
+    relative = db.relationship("Relative",
+                        secondary=association_table, backref=db.backref('persons', lazy="dynamic"))
+    db.PrimaryKeyConstraint(citizen_id, import_id)
 
     # вызывается для dict представления
     def to_dict(obj_1):
@@ -34,12 +62,31 @@ class Person(db.Model):
                     "apartment":obj.apartment, 
                     "birth_date":obj.birth_date, 
                     "name":obj.name, 
-                    "gender":obj.gender, 
-                    "relatives":obj.relatives }
+                    "gender":obj.gender}
+
     # конструктор
     # нужен для удобной записи данных в таблицу
     def __init__(self, **kwargs):
         super(Person, self).__init__(**kwargs)
+
+class Relative(db.Model):
+    __tablename__ = "relatives"
+    id = db.Column(db.Integer, autoincrement=True)
+    import_id = db.Column(db.Integer)
+    citizen_id = db.Column(db.Integer)
+    town = db.Column(db.String(64), nullable=False)
+    street = db.Column(db.String(80), nullable=False)
+    building = db.Column(db.String(64), nullable=False)
+    apartment = db.Column(db.Integer, nullable=False)
+    birth_date = db.Column(db.DateTime, nullable=False)
+    name = db.Column(db.Text, nullable=False)
+    gender = db.Column(db.String(8), nullable=False)
+    age = db.Column(db.Integer, nullable=False)
+    db.PrimaryKeyConstraint(citizen_id, id, import_id)
+
+    def __init__(self, **kwargs):
+        super(Relative, self).__init__(**kwargs)
+
 
 
 
@@ -54,35 +101,58 @@ def load_person(import_id=None, citizen_id=None):
     if citizen_id:
         return Person.query.filter_by(import_id=int(citizen_id)).all()
 
-# возвращает предыдущий import_id
-def last_import_id():
-    import_ids = Person.query.filter(Person.import_id).all()
-    if import_ids:
-        return import_ids[-1].import_id
-    else:
-        return 0
+
 
 # загрузка пользователя в db
-def commit_person(obj, import_id=1, citizen_id=0):
-    human = Person(citizen_id=int(citizen_id) or int(obj["citizen_id"]),
-                import_id=int(import_id + 1),
-                town=str(obj["town"]), 
-                street=str(obj["street"]), 
-                building=str(obj["building"]),
-                apartment=int(obj["apartment"]),
-                birth_date=str(obj["birth_date"]),
-                name=str(obj["name"]),
-                gender=str(obj["gender"]),
-                relatives=str(obj["relatives"]))
-    db.session.add(human)
+def add_persons(json_body, import_id=1, citizen_id=0):
+    relatives = dict((i["citizen_id"], i["relatives"]) for i in json_body)
+    for obj in json_body:
+        human = Person(citizen_id=int(citizen_id) or int(obj["citizen_id"]),
+                    import_id=int(import_id),
+                    town=str(obj["town"]),
+                    street=str(obj["street"]),
+                    building=str(obj["building"]),
+                    apartment=int(obj["apartment"]),
+                    birth_date=date_valid(obj["birth_date"]),
+                    name=str(obj["name"]),
+                    gender=str(obj["gender"]), age=2)
+
+        for i in relatives[obj["citizen_id"]]:
+            relativ = Relative(citizen_id=i,
+                                import_id=int(import_id),
+                                town=str(obj["town"]),
+                                street=str(obj["street"]),
+                                building=str(obj["building"]),
+                                apartment=int(obj["apartment"]),
+                                birth_date=date_valid(obj["birth_date"]),
+                                name=str(obj["name"]),
+                                gender=str(obj["gender"]), age=2)
+            human.relative.append(relativ)
+
+            # for k in relatives[i]:
+            #     person = Person(citizen_id=k,
+            #                     import_id=int(import_id),
+            #                     town=str(obj["town"]),
+            #                     street=str(obj["street"]),
+            #                     building=str(obj["building"]),
+            #                     apartment=int(obj["apartment"]),
+            #                     birth_date=date_valid(obj["birth_date"]),
+            #                     name=str(obj["name"]),
+            #                     gender=str(obj["gender"]), age=2)
+            #     person.relative.append(person)
+
+
+
+        db.session.add(human)
+
+# def commit_relative(obj, import_id=1)
 
 # проверяет дату на валидность
 def date_valid(birth_date):
     birth_date = list(map(int, birth_date.split(".")))
     birth_date.reverse()
     try:
-        datetime.date(*birth_date)
-        return False
+        return datetime.date(*birth_date)
     except:
         return True
 
@@ -104,9 +174,6 @@ def recommit_person(obj_2, import_id=1, citizen_id=0):
 
 # принимает дату возвращает число полных лет
 def age(date):
-    f = list(map(int, date.split(".")))
-    f.reverse()
     today = datetime.date.today()
-    date = datetime.date(*f)
     age = relativedelta(today, date)
     return age.years

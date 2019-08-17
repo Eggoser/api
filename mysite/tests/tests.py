@@ -23,7 +23,7 @@ address = Address("ru")
 def generate_person(persons):
 	data = {"citizens":[]}
 	# структура {int citizen_id : list of relatives}
-
+	relatives = {1:[]}
 	# counter родственных связей
 	value = int(persons/2)
 	# заполняем ассоциативный массив родственников
@@ -88,17 +88,15 @@ class Test:
 	def parse(self, arg):
 		# таймер
 		start = time.time()
-		try:
-			# запросы
-			if i == to_i-1:
-				self.app.post("/imports", data=dumps({"citizens":self.mass["citizens"][arg]}), content_type='application/json')
-			# результат
-			print("  1. [+]", "{} sec".format(time.time()-start))
-			print("  -------------- OK ---------------", "\n")
+			# запрос
+		status = self.app.post("/imports", data=dumps(self.mass), content_type='application/json').status_code
+		# результат
+		print("  1. [+]", "{}sec".format(time.time()-start), " HTTP POST", status)
+		print("  -------------- OK ---------------", "\n")
 
-			self.counter += 1
-		except Exception as e:
-			print("  1. [-] ERROR",  e)
+		self.counter += 1
+		# except Exception as e:
+		# 	print("  1. [-] ERROR",  e)
 
 	# route 2
 	def reload(self, persons):
@@ -116,12 +114,13 @@ class Test:
 				numbers.append([[int(numder/2000) if int(number/2000)!=0 else 1][0], number%2000, generate_person(1)["citizens"][0]])
 			# засекаем время
 			start = time.time()
+			status = 400
 			for i, k, c in numbers:
 				# запросы
-				self.app.patch("/imports/" + str(i) + "/citizens/" + str(k), data=dumps(c), content_type='application/json')
+				status = self.app.patch("/imports/" + str(i) + "/citizens/" + str(k), data=dumps(c), content_type='application/json').status_code
 
 			# результат
-			print("  2. [+]",  "{} sec".format((time.time()-start)/counter))
+			print("  2. [+]",  "{}sec".format((time.time()-start)/counter), " HTTP PATCH", status)
 			print("  -------------- OK ---------------", "\n")
 
 			# счетчик
@@ -137,9 +136,9 @@ class Test:
 			# засекаем время
 			start = time.time()
 			# запрос
-			self.app.get("/imports/1/citizens/")
+			status = self.app.get("/imports/1/citizens").status_code
 			# результат
-			print("  3. [+]",  "{} sec".format(time.time()-start))
+			print("  3. [+]",  "{}sec".format(time.time()-start), " HTTP GET", status)
 			print("  -------------- OK ---------------", "\n")
 
 			# счетчик
@@ -155,9 +154,9 @@ class Test:
 			# таймер
 			start = time.time()
 			# запрос
-			self.app.get("/imports/1/citizens/birthdays")
+			status = self.app.get("/imports/1/citizens/birthdays").status_code
 			# результат
-			print("  4. [+]",  "{} sec".format(time.time()-start))
+			print("  4. [+]",  "{}sec".format(time.time()-start), " HTTP GET", status)
 			print("  -------------- OK ---------------", "\n")
 
 			# счетчик
@@ -173,9 +172,9 @@ class Test:
 			# засекаем время
 			start = time.time()
 			# запрос
-			self.app.get("/imports/1/towns/stat/percentile/age")
+			status = self.app.get("/imports/1/towns/stat/percentile/age").status_code
 			# результат
-			print("  5. [+]",  "{} sec".format(time.time()-start))
+			print("  5. [+]",  "{}sec".format(time.time()-start), " HTTP GET", status)
 			print("  -------------- OK ---------------", "\n")
 
 			# счетчик

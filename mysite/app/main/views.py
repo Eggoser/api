@@ -4,31 +4,30 @@ import numpy as np
 from flask import jsonify, request, abort
 from . import main
 from .. import db
-from ..models import load_person, commit_person, date_valid, last_import_id, recommit_person, Person, age
+from ..models import load_person, add_persons, date_valid, last_import_id, recommit_person, Person, age
 
 # при проверке на валидность времени
 # datetime.date(year, month, day)
-# если данные не валидны, вызывается исключение
+# если данные не валидны, вызывается ошибка
 # обрабатывать try / except
 
 
 @main.route("/imports", methods=["POST"])
 def parse():
 	# проверяем код на ошибки
-	try:
+
+
 	    json_body = request.json["citizens"]
 	    import_id = last_import_id()
 
-	    for i in json_body:
-	    	if date_valid(i["birth_date"]):
-	    		abort(400)
-	    	commit_person(i, import_id=import_id)
+	    add_persons(json_body, import_id=import_id)
 	    db.session.commit()
+	    return "dfsf"
 	# в случае ошибки 
-	except:
-		abort(400)
+	# except:
+	# 	abort(400)
 
-	return jsonify({"data":{"import_id":import_id+1}}), 201
+	# return jsonify({"data":{"import_id":import_id+1}}), 201
 
 
 @main.route("/imports/<int:import_id>/citizens/<int:citizen_id>", methods=["PATCH"])
@@ -47,13 +46,12 @@ def reload(import_id, citizen_id):
 			js.relatives = json.loads(js.relatives)
 			js.relatives.append(citizen_id)
 			js.relatives = str(js.relatives)
-			db.session.commit()
 		for i in value_remove:
 			js = load_person(import_id, int(i))[0]
 			js.relatives = json.loads(js.relatives)
 			js.relatives.remove(citizen_id)
 			js.relatives = str(js.relatives)
-			db.session.commit()
+		db.session.commit()
 	except:
 		pass
 
