@@ -1,62 +1,49 @@
 from flask import Flask
-from app.models import last_import_id
 from flask_sqlalchemy import SQLAlchemy
+from config import DefaultConfig
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:mypassword@localhost:3306/tests"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config.from_object(DefaultConfig)
+app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:mypassword@localhost:3306/flasky"
 
 db = SQLAlchemy(app)
 
-association_table = db.Table("association",
-    db.Column("import_id", db.Integer, primary_key=True, default=last_import_id),
-    db.Column("persons_citizen_id", db.Integer, db.ForeignKey("persons.citizen_id"), primary_key=True), 
-    # db.Column("persons_import_id", db.Integer, db.ForeignKey("persons.import_id")), 
-    db.Column("relatives_citizen_id", db.Integer, db.ForeignKey("relatives.citizen_id"), primary_key=True),)
-    # db.Column("relatives_import_id", db.Integer, db.ForeignKey("relatives.import_id")))
-
-
+# таблица для хранения json 
+# информации о человеке
 class Person(db.Model):
-
-    # структура таблицы
-    # была ранее использована для её создания
-
     __tablename__ = "persons"
-    import_id = db.Column(db.Integer)
-    citizen_id = db.Column(db.Integer)
-    town = db.Column(db.String(64), nullable=False)
-    street = db.Column(db.String(80), nullable=False)
-    building = db.Column(db.String(64), nullable=False)
-    apartment = db.Column(db.Integer, nullable=False)
-    birth_date = db.Column(db.DateTime, nullable=False)
-    name = db.Column(db.Text, nullable=False)
-    gender = db.Column(db.String(8), nullable=False)
-    age = db.Column(db.Integer, nullable=False)
-    relative = db.relationship("Relative",
-                        secondary=association_table, backref=db.backref('persons', lazy="dynamic"))
-    db.PrimaryKeyConstraint(citizen_id, import_id)
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.JSON, nullable=False)
 
-    # конструктор
-    # нужен для удобной записи данных в таблицу
+    # для удобной записи существует конструктор
     def __init__(self, **kwargs):
-        super(Person, self).__init__(**kwargs)
+        super(self, Person).__init__(**kwargs)
 
-class Relative(db.Model):
-    __tablename__ = "relatives"
-    id = db.Column(db.Integer, autoincrement=True)
-    import_id = db.Column(db.Integer)
-    citizen_id = db.Column(db.Integer)
-    town = db.Column(db.String(64), nullable=False)
-    street = db.Column(db.String(80), nullable=False)
-    building = db.Column(db.String(64), nullable=False)
-    apartment = db.Column(db.Integer, nullable=False)
-    birth_date = db.Column(db.DateTime, nullable=False)
-    name = db.Column(db.Text, nullable=False)
-    gender = db.Column(db.String(8), nullable=False)
-    age = db.Column(db.Integer, nullable=False)
-    # relative = db.relationship("Relatives",
-    #                 secondary=association_table, backref=db.backref('persons', lazy="dynamic"))
-    db.PrimaryKeyConstraint(citizen_id, id, import_id)
+class Birthday(db.Model):
+    __tablename__ = "birthdays"
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.JSON, nullable=False)
 
+    # для удобной записи существует конструктор
     def __init__(self, **kwargs):
-        super(Relative, self).__init__(**kwargs)
+        super(self, Birthday).__init__(**kwargs)
+
+class Percentile(db.Model):
+    __tablename__ = "percentiles"
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.JSON, nullable=False)
+    date = db.Column(db.DateTime, nullable=False)
+
+    # для удобной записи существует конструктор
+    def __init__(self, **kwargs):
+        super(self, Percentile).__init__(**kwargs)
+
+class Bool(db.Model):
+    __tablename__ = "booleans"
+    id = db.Column(db.Integer, primary_key=True)
+    birthday_bool = db.Column(db.Boolean, nullable=False)
+    percentile_bool = db.Column(db.Boolean, nullable=False)
+
+    # для удобной записи существует конструктор
+    def __init__(self, **kwargs):
+        super(self, Bool).__init__(**kwargs)

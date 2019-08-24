@@ -1,120 +1,102 @@
 import datetime
-import json
-import numpy as np
+from run_cython import validate_json, mypercentile, mybirthdays, recommit_data
 from flask import jsonify, request, abort
 from . import main
 from .. import db
-from ..models import load_person, add_persons, date_valid, last_import_id, recommit_person, Person, age
+from ..models import Person, Birthday, Percentile, Bool
 
 # при проверке на валидность времени
 # datetime.date(year, month, day)
-# если данные не валидны, вызывается ошибка
+# если данные не валидны, вызывается исключение
 # обрабатывать try / except
 
 
 @main.route("/imports", methods=["POST"])
 def parse():
 	# проверяем код на ошибки
-
-
+	try:
 	    json_body = request.json["citizens"]
-	    import_id = last_import_id()
-
-	    add_persons(json_body, import_id=import_id)
+	    if validate_json(json_body):
+	    	raise "400"
+	    persons = Person(value=json_body)
+	    birthdays = Birthday(value=mybirthdays(json_body))
+	    percentiles = Percentile(value=mypercentile(json_body, list(datetime.datetime.now().timetuple())[0:3]), date=datetime.datetime.now())
+	    booleans = Bool(birthday_bool=False, percentile_bool=False)
+	    db.session.add(percentiles)
+	    db.session.add(birthdays)
+	    db.session.add(persons)
+	    db.session.add(booleans)
 	    db.session.commit()
-	    return "dfsf"
 	# в случае ошибки 
-	# except:
-	# 	abort(400)
+	except:
+		abort(400)
 
-	# return jsonify({"data":{"import_id":import_id+1}}), 201
+	return jsonify({"data":{"import_id":persons.id}}), 201
 
 
 @main.route("/imports/<int:import_id>/citizens/<int:citizen_id>", methods=["PATCH"])
 def reload(import_id, citizen_id):
-	json_body = request.json
+	# ошибка может возникнуть всегда
+	try:
+		json_body = request.json
+		citizens = Person.query.get(import_id)
 
-	last_relatives = recommit_person(json_body, import_id, citizen_id)
+		try: 
+			citizens.value, result = recommit_data(json_body, citizens.value["citizens"], citizen_id)
+			if validate_json(citizens.value["citizens"]):
+				abort(400)
+			db.session.commit()
+		except:
+			abort(400)
+		booleans = Bool.query.get(import_id)
+		if "relatives" in json_body.keys():
+			booleans.birthday_bool = True
+		if "town" in json_body.keys() or "birth_date" in json_body.keys():
+			booleans.percentile_bool = True
 
-	try: 
-		relatives = set(json.loads(json_body["relatives"]))
-		last_relatives = set(last_relatives)
-		value_append = relatives - last_relatives
-		value_remove = last_relatives - relatives
-		for i in value_append:
-			js = load_person(import_id, int(i))[0]
-			js.relatives = json.loads(js.relatives)
-			js.relatives.append(citizen_id)
-			js.relatives = str(js.relatives)
-		for i in value_remove:
-			js = load_person(import_id, int(i))[0]
-			js.relatives = json.loads(js.relatives)
-			js.relatives.remove(citizen_id)
-			js.relatives = str(js.relatives)
 		db.session.commit()
+		return jsonify(result), 200
+	# если ошибка
 	except:
-		pass
+		abort(400)
 
-	result = load_person(import_id, citizen_id)[0]
-	return jsonify({
-		"data": {
-			"citizen_id":result.citizen_id,
-			"town":result.town,
-			"street":result.street,
-			"building":result.building,
-			"apartment":result.apartment,
-			"name":result.name,
-			"birth_date":result.birth_date,
-			"gender":result.gender,
-			"relatives":result.relatives,
-		}
-	}), 200
 
+# за счет умной валидации и обработки, на get запросы не нужно ничего подсчитывать
+# просто и элементарно достаем данные из соответствующих таблиц
 @main.route("/imports/<int:import_id>/citizens", methods=["GET"])
 def citizens(import_id):
-	citizens = list(Person.to_dict(Person.query.filter_by(import_id=import_id).all()))
-	return jsonify({"data":citizens}), 200
+	return jsonify(Person.query.get(import_id).value), 200
 
 @main.route("/imports/<int:import_id>/citizens/birthdays", methods=["GET"])
 def birthdays(import_id):
-	citizens = list(Person.to_dict(Person.query.filter_by(import_id=import_id).all()))
-	content = {}
-	for i in citizens:
-		content[i["citizen_id"]] = int(i["birth_date"].split(".")[1])
-	data = {"1":{},	"2":{},	"3":{},	"4":{},	"5":{},	"6":{},	"7":{},	"8":{},	"9":{}, "10":{}, "11":{}, "12":{}}
-	for i in citizens:
-		relatives = json.loads(i["relatives"])
-		for k in relatives:
-			month = content[k]
-			try:
-				data[str(month)][i["citizen_id"]] += 1
-			except:
-				data[str(month)][i["citizen_id"]] = 1
+	birthdays = Birthday.query.get(import_id)
+	booleans = Bool.query.get(import_id)
 
-	for m, i in data.items():
-		result = []
-		for k, n in i.items():
-			result.append({"citizen_id":int(k), "presents":int(n)})
-		data[m] = list(result)
-	return jsonify(data)
+	if not booleans.birthday_bool:
+		return jsonify(birthdays.value), 200
+
+	persons = Person.query.get(import_id)
+	birthdays.value = mybirthdays(persons["citizens"])
+	booleans.birthday_bool = False
+
+	db.session.commit()
+
+	return jsonify(birthdays.value), 200
+
 
 @main.route("/imports/<int:import_id>/towns/stat/percentile/age", methods=["GET"])
 def percentile(import_id):
-	dates = {}
-	# собираем возраст в data
-	for i in Person.query.filter_by(import_id=import_id).all():
-		try:
-			dates[i.town].append(age(i.birth_date))
-		except:
-			dates[i.town] = [age(i.birth_date)]
+	data = Percentile.query.get(import_id)
+	booleans = Bool.query.get(import_id)
 
-	for i, k in dates.items():
-		result = {"town":i}
-		# вычисляем перцентили
-		result["p50"] = int(np.percentile(k, 50))
-		result["p75"] = int(np.percentile(k, 75))
-		result["p99"] = int(np.percentile(k, 99))
-		dates[i] = result
+	# свежи ли данные? Они должны быть сегодняшними
+	if data.date.date() == datetime.datetime.now().date() and not booleans.percentile_bool:
+		return jsonify(data), 200
 
-	# jsonим dates
-	return jsonify(dates)
+	# в связи с изменениями даты, приходиться перепроверить кому сколько лет
+	data.value = mypercentile(Person.query.get(import_id))
+	data.date = datetime.datetime.now()
+
+	# обновим их в mysql
+	db.session.commit()
+	return jsonify(data), 200

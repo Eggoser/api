@@ -10,7 +10,7 @@ def create_app(config):
 	app.config.from_object(config)
 
 	if len(sys.argv) > 1 and sys.argv[1] == "runtest":
-		app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:mypassword@localhost:3306/flask"
+		app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:mypassword@localhost:3306/flasky"
 
 
 	# инициализация flask пакетов
