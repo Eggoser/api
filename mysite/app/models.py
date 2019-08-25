@@ -9,7 +9,7 @@ class Person(db.Model):
 
     # для удобной записи существует конструктор
     def __init__(self, **kwargs):
-        super(self, Person).__init__(**kwargs)
+        super(Person, self).__init__(**kwargs)
 
 class Birthday(db.Model):
     __tablename__ = "birthdays"
@@ -18,7 +18,7 @@ class Birthday(db.Model):
 
     # для удобной записи существует конструктор
     def __init__(self, **kwargs):
-        super(self, Birthday).__init__(**kwargs)
+        super(Birthday, self).__init__(**kwargs)
 
 class Percentile(db.Model):
     __tablename__ = "percentiles"
@@ -28,7 +28,7 @@ class Percentile(db.Model):
 
     # для удобной записи существует конструктор
     def __init__(self, **kwargs):
-        super(self, Percentile).__init__(**kwargs)
+        super(Percentile, self).__init__(**kwargs)
 
 class Bool(db.Model):
     __tablename__ = "booleans"
@@ -38,7 +38,7 @@ class Bool(db.Model):
 
     # для удобной записи существует конструктор
     def __init__(self, **kwargs):
-        super(self, Bool).__init__(**kwargs)
+        super(Bool, self).__init__(**kwargs)
 
 # возвращает предыдущий import_id
 # чтоб не было никаких проблем с auto_increment

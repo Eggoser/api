@@ -1,49 +1,30 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from config import DefaultConfig
+from mysql.connector import connect
+import os
 
-app = Flask(__name__)
-app.config.from_object(DefaultConfig)
-app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:mypassword@localhost:3306/flasky"
+# flask
+cnx = connect(host="127.0.0.1", port=3306, user=os.environ.get("DATABASE_USER") or "root", password=os.environ.get("DATABASE_PASSWORD") or "mypassword", database="flask")
+cursor = cnx.cursor()
 
-db = SQLAlchemy(app)
+cursor.execute("CREATE TABLE persons(id INT PRIMARY KEY auto_increment, value JSON not null) CHARACTER SET utf8 COLLATE utf8_general_ci;")
+cursor.execute("CREATE TABLE birthdays(id INT PRIMARY KEY auto_increment, value JSON not null);")
+cursor.execute("CREATE TABLE percentiles(id INT PRIMARY KEY auto_increment, value JSON not null, date datetime not null) CHARACTER SET utf8 COLLATE utf8_general_ci;")
+cursor.execute("CREATE TABLE booleans(id INT PRIMARY KEY auto_increment, birthday_bool  tinyint(1) not null, percentile_bool  tinyint(1) not null);")
 
-# таблица для хранения json 
-# информации о человеке
-class Person(db.Model):
-    __tablename__ = "persons"
-    id = db.Column(db.Integer, primary_key=True)
-    value = db.Column(db.JSON, nullable=False)
+cnx.commit()
+cursor.close()
+cnx.close()
 
-    # для удобной записи существует конструктор
-    def __init__(self, **kwargs):
-        super(self, Person).__init__(**kwargs)
 
-class Birthday(db.Model):
-    __tablename__ = "birthdays"
-    id = db.Column(db.Integer, primary_key=True)
-    value = db.Column(db.JSON, nullable=False)
+# flasky
+cnx = connect(host="127.0.0.1", port=3306, user="root", password=os.environ.get("DATABASE_PASSWORD") or "mypassword", database="flasky")
+cursor = cnx.cursor()
 
-    # для удобной записи существует конструктор
-    def __init__(self, **kwargs):
-        super(self, Birthday).__init__(**kwargs)
 
-class Percentile(db.Model):
-    __tablename__ = "percentiles"
-    id = db.Column(db.Integer, primary_key=True)
-    value = db.Column(db.JSON, nullable=False)
-    date = db.Column(db.DateTime, nullable=False)
+cursor.execute("CREATE TABLE persons(id INT PRIMARY KEY auto_increment, value JSON not null) CHARACTER SET utf8 COLLATE utf8_general_ci;")
+cursor.execute("CREATE TABLE birthdays(id INT PRIMARY KEY auto_increment, value JSON not null);")
+cursor.execute("CREATE TABLE percentiles(id INT PRIMARY KEY auto_increment, value JSON not null, date datetime not null) CHARACTER SET utf8 COLLATE utf8_general_ci;")
+cursor.execute("CREATE TABLE booleans(id INT PRIMARY KEY auto_increment, birthday_bool  tinyint(1) not null, percentile_bool  tinyint(1) not null);")
 
-    # для удобной записи существует конструктор
-    def __init__(self, **kwargs):
-        super(self, Percentile).__init__(**kwargs)
-
-class Bool(db.Model):
-    __tablename__ = "booleans"
-    id = db.Column(db.Integer, primary_key=True)
-    birthday_bool = db.Column(db.Boolean, nullable=False)
-    percentile_bool = db.Column(db.Boolean, nullable=False)
-
-    # для удобной записи существует конструктор
-    def __init__(self, **kwargs):
-        super(self, Bool).__init__(**kwargs)
+cnx.commit()
+cursor.close()
+cnx.close()

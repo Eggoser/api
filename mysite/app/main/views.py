@@ -1,5 +1,7 @@
+from sqlalchemy.orm.attributes import flag_modified
 import datetime
-from run_cython import validate_json, mypercentile, mybirthdays, recommit_data
+from json import loads
+from ..compile_c.main import validate_json, mypercentile, mybirthdays, recommit_data
 from flask import jsonify, request, abort
 from . import main
 from .. import db
@@ -17,10 +19,10 @@ def parse():
 	try:
 	    json_body = request.json["citizens"]
 	    if validate_json(json_body):
-	    	raise "400"
-	    persons = Person(value=json_body)
+	    	abort(400)
+	    persons = Person(value={"citizens":json_body})
 	    birthdays = Birthday(value=mybirthdays(json_body))
-	    percentiles = Percentile(value=mypercentile(json_body, list(datetime.datetime.now().timetuple())[0:3]), date=datetime.datetime.now())
+	    percentiles = Percentile(value=mypercentile(json_body, list(datetime.datetime.now().timetuple())[0:3]))
 	    booleans = Bool(birthday_bool=False, percentile_bool=False)
 	    db.session.add(percentiles)
 	    db.session.add(birthdays)
@@ -45,14 +47,18 @@ def reload(import_id, citizen_id):
 			citizens.value, result = recommit_data(json_body, citizens.value["citizens"], citizen_id)
 			if validate_json(citizens.value["citizens"]):
 				abort(400)
+			flag_modified(citizens, "value")
 			db.session.commit()
 		except:
 			abort(400)
 		booleans = Bool.query.get(import_id)
 		if "relatives" in json_body.keys():
 			booleans.birthday_bool = True
-		if "town" in json_body.keys() or "birth_date" in json_body.keys():
+		if "town" in json_body.keys():
 			booleans.percentile_bool = True
+		if "birth_date" in json_body.keys():
+			booleans.percentile_bool = True
+			booleans.birthday_bool = True
 
 		db.session.commit()
 		return jsonify(result), 200
@@ -76,8 +82,9 @@ def birthdays(import_id):
 		return jsonify(birthdays.value), 200
 
 	persons = Person.query.get(import_id)
-	birthdays.value = mybirthdays(persons["citizens"])
+	birthdays.value = mybirthdays(persons.value["citizens"])
 	booleans.birthday_bool = False
+	flag_modified(birthdays, "value")
 
 	db.session.commit()
 
@@ -94,9 +101,11 @@ def percentile(import_id):
 		return jsonify(data), 200
 
 	# в связи с изменениями даты, приходиться перепроверить кому сколько лет
-	data.value = mypercentile(Person.query.get(import_id))
+	data.value = mypercentile(Person.query.get(import_id)["citizens"], list(datetime.datetime.now().timetuple())[0:3])
 	data.date = datetime.datetime.now()
+	booleans.percentile_bool = False
+	flag_modified(data, "value")
 
 	# обновим их в mysql
 	db.session.commit()
-	return jsonify(data), 200
+	return jsonify(data.value), 200

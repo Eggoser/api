@@ -1,5 +1,6 @@
 import sys
 import time
+import os
 import random
 import mysql.connector
 from mimesis import Person, Address
@@ -8,7 +9,7 @@ from json import loads, dumps
 
 # инициализация mysql-connector
 try:
-	cnx = mysql.connector.connect(user="root", password="mypassword", host="127.0.0.1", database="flasky")
+	cnx = mysql.connector.connect(user=os.environ.get("DATABASE_USER") or "root", password=os.environ.get("DATABASE_PASSWORD") or "mypassword", host="127.0.0.1", database="flasky")
 	cursor = cnx.cursor()
 except:
 	print("Error: Not Connect to database!!!!")
@@ -16,6 +17,22 @@ except:
 # инициализация классов mimesis
 person = Person("ru")
 address = Address("ru")
+
+
+def delete_from_tables():
+	try:
+		# удаление данных из тестовой таблицы
+		cursor.execute("DROP TABLES persons, birthdays, percentiles, booleans;")
+		cursor.execute("CREATE TABLE persons(id INT PRIMARY KEY auto_increment, value JSON not null) CHARACTER SET utf8 COLLATE utf8_general_ci;")
+		cursor.execute("CREATE TABLE birthdays(id INT PRIMARY KEY auto_increment, value JSON not null);")
+		cursor.execute("CREATE TABLE percentiles(id INT PRIMARY KEY auto_increment, value JSON not null, date datetime not null) CHARACTER SET utf8 COLLATE utf8_general_ci;")
+		cursor.execute("CREATE TABLE booleans(id INT PRIMARY KEY auto_increment, birthday_bool  tinyint(1) not null, percentile_bool  tinyint(1) not null);")
+		cnx.commit()
+		# остановка соединения
+		cursor.close()
+		cnx.close()
+	except:
+		print("Error: can't remove data from table")
 
 
 # эта функция генерирует информацию
@@ -26,10 +43,12 @@ address = Address("ru")
 # no valid code = 3, invalid relatives
 # no valid code = 2, invalid birth_date
 # no valid code = 1, invalid table_places, example: apartment = 1, apartaament = 1 ...
-def generate_person(persons, no_valid):
+def generate_person(persons, no_valid=False):
 	data = {"citizens":[]}
 	if no_valid:
 		code = random.randint(1, 4)
+	else:
+		code = 0
 	# структура {int citizen_id : list of relatives}
 	# counter родственных связей
 	value = 1000
@@ -130,11 +149,10 @@ class Test:
 
 		try:
 			# запросы
-			if i == to_i-1:
-				status = self.app.post("/imports", data=dumps({"citizens":self.mass["citizens"][arg]}), content_type='application/json').status_code
+			status = self.app.post("/imports", data=dumps(self.mass), content_type='application/json').status_code
 			# результат
-			if status != no_valid_code:
-				raise "no valid code is {}, must be {}".format(status, no_valid_code)
+			if status == no_valid_code:
+				raise AttributeError("no valid code is {}, must be {}".format(status, no_valid_code))
 			print("  1. [+]", "{} sec".format(time.time()-start), status)
 			print("  -------------- OK ---------------", "\n")
 
@@ -145,17 +163,9 @@ class Test:
 	# route 2
 	def reload(self, persons, no_valid_code):
 		try:
-			# определяем колличество пользователей
-			# у которых изменим поля
-			if persons >= 10:
-				counter = 10
-			else:
-				counter = int(persons)
-			numbers = []
 			# генерируем новую информацию
-			for i in range(counter):
-				number = random.randint(1, len(self.mass))
-				numbers.append([[int(numder/2000) if int(number/2000)!=0 else 1][0], number%2000, generate_person(1)["citizens"][0]])
+			numbers = []
+			numbers.append([1, 3, generate_person(1)["citizens"][0]])
 			# засекаем время
 			start = time.time()
 			try:
@@ -163,17 +173,17 @@ class Test:
 					# запросы
 					status = self.app.patch("/imports/" + str(i) + "/citizens/" + str(k), data=dumps(c), content_type='application/json').status_code
 			except:
-				if no_valid_code == 400:
-					status = "No search content"
-				else:
-					raise "Interal Server Error"
+				pass
 
 			# результат
-			print("  2. [+]",  "{} sec".format((time.time()-start)/counter), status)
+			print("  2. [+]",  "{} sec".format(time.time()-start), status)
 			print("  -------------- OK ---------------", "\n")
 
 			# счетчик
 			self.counter += 1
+			if status == 400 and status!=no_valid_code:
+				delete_from_tables()
+				sys.exit(1)
 
 		# в случае ошибки
 		except Exception as e:
@@ -239,11 +249,11 @@ class Test:
 		if random.randint(1, 3) == 1:
 			no_valid = True
 			no_valid_code = 201
-			print("generated data is not valid")
+			print("  generated data is not valid\n")
 		else:
 			no_valid = False
 			no_valid_code = 400
-			print("generated data is valid")
+			print("  generated data is valid\n")
 
 		self.mass = generate_person(peoples, no_valid)
 		# вызываем все 5 функций
@@ -258,14 +268,6 @@ class Test:
 		self.percentile()
 
 		# очищаем таблицу
-		try:
-			# удаление данных из тестовой таблицы
-			cursor.execute("DELETE FROM flasky.persons;")
-			cnx.commit()
-			# остановка соединения
-			cursor.close()
-			cnx.close()
-		except:
-			print("Error: can't remove data from table")
+		delete_from_tables()
 
 		print(" ===========", self.counter, "routers is OK ===========")

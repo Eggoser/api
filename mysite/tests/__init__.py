@@ -13,9 +13,7 @@ class MyTest:
 			peoples = sys.argv[2]
 			print("\n", "========== Tests is started =========", "\n")
 		except:
-			print("You must be Enter the number of people, \nexample: 'python manage.py runtest 10000'" + "\n"*enters)
+			print("You must be Enter the number of people, \nexample: 'python manage.py runtest 1000'" + "\n"*enters)
 			print("--------- 0 tests is run ----------")
 			return 0
-		if peoples > 2000:
-			peoples = 2000
 		self.test.run_test(peoples=int(peoples))

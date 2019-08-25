@@ -30,7 +30,7 @@ cpdef validate_json(list json_body):
 		if len(json_body) < 1:
 			return True
 		for i in json_body:
-			if i["town"] == None or i["street"] == None or i["name"] == None or i["building"] == None or int(i["apartment"]) == 1 or i["apartment"] == None:
+			if i["town"] == None or i["street"] == None or i["name"] == None or i["building"] == None or int(i["apartment"]) == 1 or i["apartment"] == None or i["citizen_id"] in i["relatives"]:
 				return True
 
 			if date_valid(i["birth_date"]):
@@ -119,11 +119,7 @@ cpdef mybirthdays(list citizens):
 		for k, n in i.items():
 			result.append({"citizen_id":int(k), "presents":int(n)})
 		data[m] = list(result)
-
-
-
-
-
+	return data
 
 
 
@@ -131,25 +127,29 @@ cpdef recommit_data(dict new, list old, int citizen_id):
 	cdef dict old_mass = {}
 	cdef k
 	cdef i
+	cdef last_relatives
+	cdef value_remove
+	cdef value_append
+	cdef relatives
 
 	for i in range(len(old)):
 		old_mass.update({old[i]["citizen_id"] : [old[i], i]})
 
-
-	cdef relatives = set(new["relatives"])
-	cdef last_relatives = set(old_mass[citizen_id][0]["relatives"])
-	cdef value_append = relatives - last_relatives
-	cdef value_remove = last_relatives - relatives
-
-
 	for i, k in new.items():
 		old[old_mass[citizen_id][1]].update({i:k})
 
+	try:
+		relatives = set(new["relatives"])
+		last_relatives = set(old_mass[citizen_id][0]["relatives"])
+		value_append = relatives - last_relatives
+		value_remove = last_relatives - relatives
 
-	for i in value_append:
-		old[old_mass[i][1]]["relatives"].append(citizen_id)
+		for i in value_append:
+			old[old_mass[i][1]]["relatives"].append(citizen_id)
 
-	for i in value_remove:
-		old[old_mass[i][1]]["relatives"].remove(citizen_id)
+		for i in value_remove:
+			old[old_mass[i][1]]["relatives"].remove(citizen_id)
+	except:
+		pass
 
 	return {"citizens":old}, {"data":old[old_mass[citizen_id][1]]}
