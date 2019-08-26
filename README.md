@@ -72,8 +72,10 @@
 * birthdays – (id INT PRIMARY KEY auto_increment, value JSON not null)
 * percentiles – (id INT PRIMARY KEY auto_increment, value JSON not null, date datetime not null) CHARACTER SET utf8 COLLATE utf8_general_ci
 * booleans – (id INT PRIMARY KEY auto_increment, birthday_bool  tinyint(1) not null, percentile_bool  tinyint(1) not null)
-
-* **POST /imports**
+<br>
+<br>
+<br>
+* **POST /imports**<br>
 Принимает на вход json, 
 
 **Не валидными данными являются**
