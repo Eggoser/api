@@ -39,13 +39,3 @@ class Bool(db.Model):
     # для удобной записи существует конструктор
     def __init__(self, **kwargs):
         super(Bool, self).__init__(**kwargs)
-
-# возвращает предыдущий import_id
-# чтоб не было никаких проблем с auto_increment
-def last_import_id():
-    import_ids = Birthday.query.filter(Birthday.id).all()
-    if import_ids:
-        return import_ids[-1].import_id
-    else:
-        return 0
-

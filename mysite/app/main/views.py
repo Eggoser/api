@@ -22,7 +22,7 @@ def parse():
 	    	abort(400)
 	    persons = Person(value={"citizens":json_body})
 	    birthdays = Birthday(value=mybirthdays(json_body))
-	    percentiles = Percentile(value=mypercentile(json_body, list(datetime.datetime.now().timetuple())[0:3]))
+	    percentiles = Percentile(value=mypercentile(json_body, list(datetime.datetime.now().timetuple())[0:3]), date=datetime.datetime.now())
 	    booleans = Bool(birthday_bool=False, percentile_bool=False)
 	    db.session.add(percentiles)
 	    db.session.add(birthdays)
@@ -75,37 +75,42 @@ def citizens(import_id):
 
 @main.route("/imports/<int:import_id>/citizens/birthdays", methods=["GET"])
 def birthdays(import_id):
-	birthdays = Birthday.query.get(import_id)
-	booleans = Bool.query.get(import_id)
+	try:
+		birthdays = Birthday.query.get(import_id)
+		booleans = Bool.query.get(import_id)
 
-	if not booleans.birthday_bool:
+		if not booleans.birthday_bool:
+			return jsonify(birthdays.value), 200
+
+		persons = Person.query.get(import_id)
+		birthdays.value = mybirthdays(persons.value["citizens"])
+		booleans.birthday_bool = False
+		flag_modified(birthdays, "value")
+
+		db.session.commit()
+
 		return jsonify(birthdays.value), 200
-
-	persons = Person.query.get(import_id)
-	birthdays.value = mybirthdays(persons.value["citizens"])
-	booleans.birthday_bool = False
-	flag_modified(birthdays, "value")
-
-	db.session.commit()
-
-	return jsonify(birthdays.value), 200
-
+	except:
+		abort(404)
 
 @main.route("/imports/<int:import_id>/towns/stat/percentile/age", methods=["GET"])
 def percentile(import_id):
-	data = Percentile.query.get(import_id)
-	booleans = Bool.query.get(import_id)
+	try:
+		data = Percentile.query.get(import_id)
+		booleans = Bool.query.get(import_id)
 
-	# свежи ли данные? Они должны быть сегодняшними
-	if data.date.date() == datetime.datetime.now().date() and not booleans.percentile_bool:
-		return jsonify(data), 200
+		# свежи ли данные? Они должны быть сегодняшними
+		if data.date.date() == datetime.datetime.now().date() and not booleans.percentile_bool:
+			return jsonify(data.value), 200
 
-	# в связи с изменениями даты, приходиться перепроверить кому сколько лет
-	data.value = mypercentile(Person.query.get(import_id)["citizens"], list(datetime.datetime.now().timetuple())[0:3])
-	data.date = datetime.datetime.now()
-	booleans.percentile_bool = False
-	flag_modified(data, "value")
+		# в связи с изменениями даты, приходиться перепроверить кому сколько лет
+		data.value = mypercentile(Person.query.get(import_id).value["citizens"], list(datetime.datetime.now().timetuple())[0:3])
+		data.date = datetime.datetime.now()
+		booleans.percentile_bool = False
+		flag_modified(data, "value")
 
-	# обновим их в mysql
-	db.session.commit()
-	return jsonify(data.value), 200
+		# обновим их в mysql
+		db.session.commit()
+		return jsonify(data.value), 200
+	except:
+		abort(404)

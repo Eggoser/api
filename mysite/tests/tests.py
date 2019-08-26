@@ -152,7 +152,7 @@ class Test:
 			status = self.app.post("/imports", data=dumps(self.mass), content_type='application/json').status_code
 			# результат
 			if status == no_valid_code:
-				raise AttributeError("no valid code is {}, must be {}".format(status, no_valid_code))
+				raise AttributeError("no valid code is {}, your code is {}".format(status, no_valid_code))
 			print("  1. [+]", "{} sec".format(time.time()-start), status)
 			print("  -------------- OK ---------------", "\n")
 
@@ -167,11 +167,14 @@ class Test:
 			numbers = []
 			numbers.append([1, 3, generate_person(1)["citizens"][0]])
 			# засекаем время
+			del numbers[0][2]["citizen_id"]
 			start = time.time()
 			try:
 				for i, k, c in numbers:
 					# запросы
 					status = self.app.patch("/imports/" + str(i) + "/citizens/" + str(k), data=dumps(c), content_type='application/json').status_code
+				if status == no_valid_code:
+					raise AttributeError("no valid code is {}, your code is {}".format(status, no_valid_code))
 			except:
 				pass
 
@@ -233,7 +236,7 @@ class Test:
 			# запрос
 			status = self.app.get("/imports/1/towns/stat/percentile/age").status_code
 			# результат
-			print("  5. [+]",  "{} sec".format(time.time()-start), status_code)
+			print("  5. [+]",  "{} sec".format(time.time()-start), status)
 			print("  -------------- OK ---------------", "\n")
 
 			# счетчик

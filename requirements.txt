@@ -1,0 +1,8 @@
+Flask==1.0.2
+Flask-SQLAlchemy==2.4.0
+mimesis==3.3.0
+mysql-connector==2.2.9
+numpy==1.17.0
+PyMySQL==0.9.3
+uWSGI==2.0.18
+Cython==0.29.13
