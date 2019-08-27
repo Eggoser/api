@@ -41,7 +41,7 @@
  `python cr_all.py`<br><br> Используйте `python` без тройки
 
  #### 6.2. Перейдите в папку app/compile_c скомпильте сишки и вернитесь обратно
- `cd app/compile_c & python setup.py build_ext --inplace & cd ../..`
+ `cd app/compile_c && python setup.py build_ext --inplace && cd ../..`
 
  #### 7.1. Для запуска тестов используйте
   `python manage.py runtest <peoples>`<br><br>
@@ -85,6 +85,7 @@
 * человек сам себе родственник
 * дата не валидная
 * какой либо из параметров = null
+* значение gender не валидно
 * название какого либо из параметров записано не верно
 
 **Валидными данными являются**
